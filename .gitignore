@@ -1,0 +1,6 @@
+# Compiled go binary
+wintree
+wintree.exe
+
+# macOS specific files
+.DS_Store
