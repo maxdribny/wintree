@@ -4,8 +4,13 @@ Copyright © 2025 Maxim Dribny <mdribnyi@gmail.com>
 package cmd
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )
 
@@ -41,10 +46,121 @@ and can output to the terminal, a file, or the system clipboard.`,
 		if len(args) > 0 {
 			startPath = args[0]
 		}
+
 		// Clean the path to handle things like "path/.." or "./path" consistently
+		startPath, err := filepath.Abs(startPath)
+		if err != nil {
+			return fmt.Errorf("invalid starting path: %w", err)
+		}
+
+		// 2. Process Filters
+		filter := processFilters(excludePatterns)
+
+		// 3. Walk Directory
+		var output strings.Builder
+
+		output.WriteString(filepath.Base(startPath) + "\n")
+
+		// filepath.WalkDir takes a root path and a callback
+		// which is executed for every file and directory it finds
+		walkErr := filepath.WalkDir(startPath, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if path == startPath {
+				return nil
+			}
+
+			// --- Filtering --- //
+
+			// Check if the directory should be excluded
+			if d.IsDir() {
+				dirName := d.Name()
+				if _, shouldExclude := filter.excludeDirs[dirName]; shouldExclude {
+					// fs.SkipDir is a special error flag that tells WalkDir to
+					// not visit any of the files in a v efficient way
+					return fs.SkipDir
+				}
+			}
+
+			// Check if the file extension should be excluded
+			extension := filepath.Ext(d.Name())
+			if _, shouldExclude := filter.excludeExts[extension]; shouldExclude && extension != "" {
+				// We just return nil to skip the single file and continue the walk
+				return nil
+			}
+
+			// --- Formatting Logic --- //
+
+			relativePath, err := filepath.Rel(startPath, path)
+			if err != nil {
+				return err
+			}
+
+			depth := strings.Count(relativePath, string(filepath.Separator))
+
+			for i := 0; i < depth; i++ {
+				output.WriteString("|   ")
+			}
+			// Last branch in the tree
+			output.WriteString("|-- ")
+			output.WriteString(d.Name() + "\n")
+
+			return nil
+		})
+
+		if walkErr != nil {
+			return fmt.Errorf("error walking directory: %w", walkErr)
+		}
+
+		// 4. Handle Final Output
+		finalOutput := output.String()
+
+		// If --copy flag is set
+		if copyToClipboard {
+			if err := clipboard.WriteAll(finalOutput); err != nil {
+				return fmt.Errorf("failed to copy to clipboard: %w", err)
+			}
+			fmt.Println("Output copied to clipboard.")
+		}
+
+		// If --out flag is set
+		if outputFile != "" {
+			// os.WriteFile is a convenient way to write data to a file
+			// 0644 is a standard file permission setting (readable by all, writable by owner)
+			if err := os.WriteFile(outputFile, []byte(finalOutput), 0644); err != nil {
+				return fmt.Errorf("failed to write to output file: %w", err)
+			}
+			fmt.Printf("Output written to %s\n", outputFile)
+		}
+
+		// If neither flag, print to standard output
+		if !copyToClipboard && outputFile == "" {
+			fmt.Print(finalOutput)
+		}
 
 		return nil
 	},
+}
+
+// processFilters takes the raw string slices from the flags and organizes them into maps for fast lookups
+func processFilters(exclude []string) filter {
+	f := filter{
+		excludeDirs: make(map[string]struct{}),
+		excludeExts: make(map[string]struct{}),
+	}
+
+	for _, pattern := range exclude {
+		if strings.HasPrefix(pattern, ".") {
+			// Extension filter
+			f.excludeExts[pattern] = struct{}{}
+		} else {
+			// Directory name filter
+			f.excludeDirs[pattern] = struct{}{}
+		}
+	}
+	return f
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -57,20 +173,8 @@ func Execute() {
 }
 
 func init() {
-	// init() is a special Go function that runs before main()
-	// This is the standard place to set up flags in Cobra
-
-	// Here we define our flags and bind them to the variables we declared above.
-	// The Flags().StringSliceP() function creates a flag that can accept multiple string values.
-	// "exclude" is the long name, "e" is the short name.
-	// The empty slice is the default value.
-	// The final string is the help message.
-	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Patterns to exclude (files/dirs, e.g., .git, *.log)")
-	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Patterns to include (whitelist, e.g., *.go, *.md)")
-
-	// A simple string flag for the output file path
+	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Patterns to exclude (dirs like 'node_modules' or exts like '.log')")
+	//rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Patterns to include (whitelist, e.g., *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
-
-	// A boolean flag. If the user includes '--copy' or `-c`, copyToClipboard will be true.
 	rootCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy the output to the system clipboard")
 }
