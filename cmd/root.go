@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +31,7 @@ type filter struct {
 var rootCmd = &cobra.Command{
 	Use:   "wintree [path]",
 	Short: "A modern, cross-platform tree command.",
-	Long: `wintree is a powerful, intuitive, and easy-to-use alternative to the
+	Long: `wintree is a simple, intuitive, and easy-to-use alternative to the
 built-in tree commands on Windows and other operating systems.
 
 It allows for advanced filtering with inclusion and exclusion patterns
@@ -49,90 +48,38 @@ and can output to the terminal, a file, or the system clipboard.`,
 			return fmt.Errorf("invalid starting path: %w", err)
 		}
 
-		filter := processFilters(excludePatterns, includePatterns)
+		filters := processFilters(excludePatterns, includePatterns)
 
-		// 3. Walk Directory
-		var output strings.Builder
-
-		output.WriteString(filepath.Base(startPath) + "\n")
-
-		// filepath.WalkDir takes a root path and a callback
-		// which is executed for every file and directory it finds
-		walkErr := filepath.WalkDir(startPath, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if path == startPath {
-				return nil
-			}
-
-			// --- Filtering --- //
-
-			// Check if the directory should be excluded
-			if d.IsDir() {
-				dirName := d.Name()
-				if _, shouldExclude := filter.excludeDirs[dirName]; shouldExclude {
-					// fs.SkipDir is a special error flag that tells WalkDir to
-					// not visit any of the files in a v efficient way
-					return fs.SkipDir
-				}
-			}
-
-			// Check if the file extension should be excluded
-			extension := filepath.Ext(d.Name())
-			if _, shouldExclude := filter.excludeExts[extension]; shouldExclude && extension != "" {
-				// We just return nil to skip the single file and continue the walk
-				return nil
-			}
-
-			// --- Formatting Logic --- //
-
-			relativePath, err := filepath.Rel(startPath, path)
-			if err != nil {
-				return err
-			}
-
-			depth := strings.Count(relativePath, string(filepath.Separator))
-
-			for i := 0; i < depth; i++ {
-				output.WriteString("|   ")
-			}
-			// Last branch in the tree
-			output.WriteString("|-- ")
-			output.WriteString(d.Name() + "\n")
-
-			return nil
-		})
-
-		if walkErr != nil {
-			return fmt.Errorf("error walking directory: %w", walkErr)
+		// 2. Find all matching files
+		matchingFiles, err := findMatchingFiles(startPath, filters)
+		if err != nil {
+			return fmt.Errorf("error finding files: %w", err)
 		}
 
-		// 4. Handle Final Output
-		finalOutput := output.String()
+		// If in include mode and no files were found, nothing to do
+		if len(filters.includeGlobs) > 0 && len(matchingFiles) == 0 {
+			fmt.Println("No files found matching include patterns.")
+			return nil
+		}
 
-		// If --copy flag is set
+		// 3. Build the tree output from the list of files
+		finalOuput := buildTreeOutput(startPath, matchingFiles, filters)
+
+		// 4. Handle final output
 		if copyToClipboard {
-			if err := clipboard.WriteAll(finalOutput); err != nil {
-				return fmt.Errorf("failed to copy to clipboard: %w", err)
+			if err := os.WriteFile(outputFile, []byte(finalOuput), 0644); err != nil {
+				return fmt.Errorf("failed to write to output file: %w", err)
 			}
 			fmt.Println("Output copied to clipboard.")
 		}
-
-		// If --out flag is set
 		if outputFile != "" {
-			// os.WriteFile is a convenient way to write data to a file
-			// 0644 is a standard file permission setting (readable by all, writable by owner)
-			if err := os.WriteFile(outputFile, []byte(finalOutput), 0644); err != nil {
+			if err := os.WriteFile(outputFile, []byte(finalOuput), 0644); err != nil {
 				return fmt.Errorf("failed to write to output file: %w", err)
 			}
 			fmt.Printf("Output written to %s\n", outputFile)
 		}
-
-		// If neither flag, print to standard output
 		if !copyToClipboard && outputFile == "" {
-			fmt.Print(finalOutput)
+			fmt.Print(finalOuput)
 		}
 
 		return nil
