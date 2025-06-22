@@ -22,13 +22,11 @@ var (
 	copyToClipboard bool
 )
 
-// filter now uses glob patterns for exclusion for more power and less ambiguity.
 type filter struct {
 	excludeGlobs []string
 	includeGlobs []string
 }
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "wintree [path]",
 	Short: "A modern, cross-platform tree command.",
@@ -87,7 +85,6 @@ and can output to the terminal, a file, or the system clipboard.`,
 	},
 }
 
-// processFilters now passes patterns through without modification.
 func processFilters(exclude, include []string) filter {
 	return filter{
 		excludeGlobs: exclude,
@@ -95,7 +92,7 @@ func processFilters(exclude, include []string) filter {
 	}
 }
 
-// findMatchingFiles now handles directory-based includes and file-based glob includes.
+// findMatchingFiles handles directory-based includes and file-based glob includes.
 func findMatchingFiles(root string, f filter) ([]string, error) {
 	var matchingPaths []string
 	isIncludeMode := len(f.includeGlobs) > 0
@@ -128,14 +125,12 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			return nil
 		}
 
-		// --- NEW INCLUSION LOGIC ---
 		// In include mode, we must match files or directories explicitly.
-
 		// Case 1: A directory is an exact match for an include pattern.
 		// If so, we do a sub-walk and add all its files.
 		if d.IsDir() {
 			for _, pattern := range f.includeGlobs {
-				// We use exact match here, not glob, for directory inclusion.
+				// Don't glob, use exact match for directory inclusion.
 				if d.Name() == pattern {
 					// This directory is explicitly included. Walk it and add all files within.
 					subWalkErr := filepath.WalkDir(path, func(subPath string, subD fs.DirEntry, _ error) error {
@@ -168,7 +163,7 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			for _, pattern := range f.includeGlobs {
 				if matched, _ := filepath.Match(pattern, d.Name()); matched {
 					matchingPaths = append(matchingPaths, path)
-					break // Stop after first match.
+					break
 				}
 			}
 		}
@@ -179,12 +174,11 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 	return matchingPaths, walkErr
 }
 
-// buildTreeOutput is now simpler as it doesn't need to re-check for excluded dirs.
+// Construct the tree output as a string
 func buildTreeOutput(root string, paths []string) string {
 	var output strings.Builder
 	output.WriteString(filepath.Base(root) + "\n")
 
-	// Use a map to store all unique nodes (files and their parent dirs) that need to be printed.
 	nodes := make(map[string]struct{})
 	for _, path := range paths {
 		nodes[path] = struct{}{}
@@ -243,7 +237,6 @@ func buildTreeOutput(root string, paths []string) string {
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -252,7 +245,6 @@ func Execute() {
 }
 
 func init() {
-	// The help text should be updated to reflect glob usage.
 	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Glob patterns to exclude (e.g., .git, *.log, node_modules)")
 	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Glob patterns to include (e.g., .git, *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
