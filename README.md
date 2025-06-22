@@ -6,7 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/maxdribny/wintree)](https://goreportcard.com/report/github.com/maxdribny/wintree)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-`wintree` is a modern, cross-platform command-line tool for generating directory tree listings. Written in Go, it provides a single, dependency-free binary that runs on Windows, macOS, and Linux. It's designed to be fast, intuitive, and powerful, focusing on the most essential features like advanced filtering and easy output redirection.
+`wintree` is a modern, cross-platform command-line tool for generating directory tree listings. Written in Go, it provides a single, dependency-free binary that runs on Windows, macOS, and Linux. It's designed to be fast, intuitive, and simple, focusing on the most essential features like advanced filtering and easy output redirection.
 
 ## Key Features
 
