@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )
 
@@ -21,9 +22,9 @@ var (
 	copyToClipboard bool
 )
 
+// filter now uses glob patterns for exclusion for more power and less ambiguity.
 type filter struct {
-	excludeDirs  map[string]struct{}
-	excludeExts  map[string]struct{}
+	excludeGlobs []string
 	includeGlobs []string
 }
 
@@ -58,52 +59,43 @@ and can output to the terminal, a file, or the system clipboard.`,
 
 		// If in include mode and no files were found, nothing to do
 		if len(filters.includeGlobs) > 0 && len(matchingFiles) == 0 {
-			fmt.Println("No files found matching include patterns.")
+			fmt.Println("No files found matching the given patterns.")
 			return nil
 		}
 
 		// 3. Build the tree output from the list of files
-		finalOuput := buildTreeOutput(startPath, matchingFiles, filters)
+		finalOutput := buildTreeOutput(startPath, matchingFiles)
 
 		// 4. Handle final output
 		if copyToClipboard {
-			if err := os.WriteFile(outputFile, []byte(finalOuput), 0644); err != nil {
-				return fmt.Errorf("failed to write to output file: %w", err)
+			if err := clipboard.WriteAll(finalOutput); err != nil {
+				return fmt.Errorf("failed to copy to clipboard: %w", err)
 			}
 			fmt.Println("Output copied to clipboard.")
 		}
 		if outputFile != "" {
-			if err := os.WriteFile(outputFile, []byte(finalOuput), 0644); err != nil {
+			if err := os.WriteFile(outputFile, []byte(finalOutput), 0644); err != nil {
 				return fmt.Errorf("failed to write to output file: %w", err)
 			}
 			fmt.Printf("Output written to %s\n", outputFile)
 		}
 		if !copyToClipboard && outputFile == "" {
-			fmt.Print(finalOuput)
+			fmt.Print(finalOutput)
 		}
 
 		return nil
 	},
 }
 
-// processFilters takes the raw string slices from the flags and organizes them into maps for fast lookups
+// processFilters now passes patterns through without modification.
 func processFilters(exclude, include []string) filter {
-	f := filter{
-		excludeDirs:  make(map[string]struct{}),
-		excludeExts:  make(map[string]struct{}),
+	return filter{
+		excludeGlobs: exclude,
 		includeGlobs: include,
 	}
-
-	for _, pattern := range exclude {
-		if strings.HasPrefix(pattern, ".") && !strings.Contains(pattern, string(filepath.Separator)) {
-			f.excludeExts[pattern] = struct{}{}
-		} else {
-			f.excludeDirs[pattern] = struct{}{}
-		}
-	}
-	return f
 }
 
+// findMatchingFiles now handles directory-based includes and file-based glob includes.
 func findMatchingFiles(root string, f filter) ([]string, error) {
 	var matchingPaths []string
 	isIncludeMode := len(f.includeGlobs) > 0
@@ -113,46 +105,82 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			return err
 		}
 
-		// Exclusion logic - always applied first
-		if d.IsDir() {
-			if _, shouldExclude := f.excludeDirs[d.Name()]; shouldExclude && path != root {
-				return fs.SkipDir
-			}
-		}
-		if ext := filepath.Ext(d.Name()); ext != "" {
-			if _, shouldExclude := f.excludeExts[ext]; shouldExclude {
+		// --- Exclusion Logic (runs first) ---
+		entryName := d.Name()
+		for _, pattern := range f.excludeGlobs {
+			matched, _ := filepath.Match(pattern, entryName)
+			if matched {
+				if d.IsDir() {
+					if path == root {
+						return nil
+					}
+					return fs.SkipDir
+				}
 				return nil
 			}
 		}
 
-		// If it's a directory, we don't add it to the list. We let the walk continue to find files inside it.
-		if d.IsDir() {
+		// If not in include mode, add all non-directory files.
+		if !isIncludeMode {
+			if !d.IsDir() {
+				matchingPaths = append(matchingPaths, path)
+			}
 			return nil
 		}
 
-		if isIncludeMode {
-			match := false
+		// --- NEW INCLUSION LOGIC ---
+		// In include mode, we must match files or directories explicitly.
+
+		// Case 1: A directory is an exact match for an include pattern.
+		// If so, we do a sub-walk and add all its files.
+		if d.IsDir() {
 			for _, pattern := range f.includeGlobs {
-				if matched, _ := filepath.Match(pattern, d.Name()); matched {
-					match = true
-					break
+				// We use exact match here, not glob, for directory inclusion.
+				if d.Name() == pattern {
+					// This directory is explicitly included. Walk it and add all files within.
+					subWalkErr := filepath.WalkDir(path, func(subPath string, subD fs.DirEntry, _ error) error {
+						if !subD.IsDir() {
+							// Check if this sub-file is excluded.
+							isExcluded := false
+							for _, excludePattern := range f.excludeGlobs {
+								if matched, _ := filepath.Match(excludePattern, subD.Name()); matched {
+									isExcluded = true
+									break
+								}
+							}
+							if !isExcluded {
+								matchingPaths = append(matchingPaths, subPath)
+							}
+						}
+						return nil
+					})
+					if subWalkErr != nil {
+						return subWalkErr
+					}
+					// We've processed this directory, so skip it in the main walk.
+					return fs.SkipDir
 				}
-			}
-			if !match {
-				return nil // File does not match any include pattern, so skip it.
 			}
 		}
 
-		// File has passed all filters, so we add it to the list.
-		matchingPaths = append(matchingPaths, path)
+		// Case 2: A file matches a glob-style include pattern.
+		if !d.IsDir() {
+			for _, pattern := range f.includeGlobs {
+				if matched, _ := filepath.Match(pattern, d.Name()); matched {
+					matchingPaths = append(matchingPaths, path)
+					break // Stop after first match.
+				}
+			}
+		}
+
 		return nil
 	})
 
 	return matchingPaths, walkErr
 }
 
-// buildTreeOutput takes a list of file paths and constructs the visual tree string.
-func buildTreeOutput(root string, paths []string, f filter) string {
+// buildTreeOutput is now simpler as it doesn't need to re-check for excluded dirs.
+func buildTreeOutput(root string, paths []string) string {
 	var output strings.Builder
 	output.WriteString(filepath.Base(root) + "\n")
 
@@ -163,10 +191,6 @@ func buildTreeOutput(root string, paths []string, f filter) string {
 		// Add all parent directories of the path to the nodes map as well
 		dir := filepath.Dir(path)
 		for dir != root && dir != "." {
-			// Stop if we hit an excluded directory
-			if _, isExcluded := f.excludeDirs[filepath.Base(dir)]; isExcluded {
-				break
-			}
 			nodes[dir] = struct{}{}
 			dir = filepath.Dir(dir)
 		}
@@ -188,7 +212,7 @@ func buildTreeOutput(root string, paths []string, f filter) string {
 		isLast := true
 		if i+1 < len(sortedNodes) {
 			nextRelPath, _ := filepath.Rel(root, sortedNodes[i+1])
-			// If the next item has the same directory prefix, this one isnt the last.
+			// If the next item has the same directory prefix, this one isn't the last.
 			if strings.HasPrefix(nextRelPath, filepath.Dir(relPath)+string(filepath.Separator)) {
 				isLast = false
 			}
@@ -199,7 +223,7 @@ func buildTreeOutput(root string, paths []string, f filter) string {
 			if lastInDir[j] {
 				output.WriteString("    ") // Parent was the last, so no vertical line
 			} else {
-				output.WriteString("|   ")
+				output.WriteString("│   ")
 			}
 		}
 
@@ -228,8 +252,9 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Patterns to exclude (dirs like 'node_modules' or exts like '.log')")
-	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Patterns to include (whitelist, e.g., *.go, *.md)")
+	// The help text should be updated to reflect glob usage.
+	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Glob patterns to exclude (e.g., .git, *.log, node_modules)")
+	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Glob patterns to include (e.g., .git, *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
 	rootCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy the output to the system clipboard")
 }
