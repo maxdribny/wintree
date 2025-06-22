@@ -7,3 +7,6 @@ wintree.exe
 
 # Distribution folder
 /dist
+
+# Build scripts
+build.ps1
