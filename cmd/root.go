@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -157,7 +158,7 @@ func processFilters(exclude, include []string) filter {
 }
 
 func findMatchingFiles(root string, f filter) ([]string, error) {
-	var matchingPaths = []string
+	var matchingPaths []string
 	isIncludeMode := len(f.includeGlobs) > 0
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -177,6 +178,7 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			}
 		}
 
+		// If it's a directory, we don't add it to the list. We let the walk continue to find files inside it.
 		if d.IsDir() {
 			return nil
 		}
@@ -194,11 +196,79 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			}
 		}
 
+		// File has passed all filters, so we add it to the list.
 		matchingPaths = append(matchingPaths, path)
 		return nil
 	})
 
 	return matchingPaths, walkErr
+}
+
+// buildTreeOutput takes a list of file paths and constructs the visual tree string.
+func buildTreeOutput(root string, paths []string, f filter) string {
+	var output strings.Builder
+	output.WriteString(filepath.Base(root) + "\n")
+
+	// Use a map to store all unique nodes (files and their parent dirs) that need to be printed.
+	nodes := make(map[string]struct{})
+	for _, path := range paths {
+		nodes[path] = struct{}{}
+		// Add all parent directories of the path to the nodes map as well
+		dir := filepath.Dir(path)
+		for dir != root && dir != "." {
+			// Stop if we hit an excluded directory
+			if _, isExcluded := f.excludeDirs[filepath.Base(dir)]; isExcluded {
+				break
+			}
+			nodes[dir] = struct{}{}
+			dir = filepath.Dir(dir)
+		}
+	}
+
+	sortedNodes := make([]string, 0, len(nodes))
+	for nodePath := range nodes {
+		sortedNodes = append(sortedNodes, nodePath)
+	}
+	sort.Strings(sortedNodes)
+
+	// A map to track which directory levels have more items, for drawing the tree with '|'
+	lastInDir := make(map[int]bool)
+	for i, path := range sortedNodes {
+		relPath, _ := filepath.Rel(root, path)
+		depth := strings.Count(relPath, string(filepath.Separator))
+
+		// Check if this is the last entry at its depth or in its parent directory
+		isLast := true
+		if i+1 < len(sortedNodes) {
+			nextRelPath, _ := filepath.Rel(root, sortedNodes[i+1])
+			// If the next item has the same directory prefix, this one isnt the last.
+			if strings.HasPrefix(nextRelPath, filepath.Dir(relPath)+string(filepath.Separator)) {
+				isLast = false
+			}
+		}
+
+		// Print indentation
+		for j := 0; j < depth; j++ {
+			if lastInDir[j] {
+				output.WriteString("    ") // Parent was the last, so no vertical line
+			} else {
+				output.WriteString("|   ")
+			}
+		}
+
+		// Print branch prefix
+		if isLast {
+			output.WriteString("└── ")
+			lastInDir[depth] = true
+		} else {
+			output.WriteString("├── ")
+			lastInDir[depth] = false
+		}
+
+		output.WriteString(filepath.Base(path) + "\n")
+	}
+
+	return output.String()
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
