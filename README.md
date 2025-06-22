@@ -1,12 +1,12 @@
 # wintree 🌲
 
-> Tired of using complicated external tree packages with too many options and complicated syntax? Try wintree - a fast, simple and easy to use alternative to built-in and third party tree commands for all operating systems.
-
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/maxdribny/wintree)](https://github.com/maxdribny/wintree/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/maxdribny/wintree)](https://goreportcard.com/report/github.com/maxdribny/wintree)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-`wintree` is a modern, cross-platform command-line tool for generating directory tree listings. Written in Go, it provides a single, dependency-free binary that runs on Windows, macOS, and Linux. It's designed to be fast, intuitive, and simple, focusing on the most essential features like advanced filtering and easy output redirection.
+Tired of using complicated external tree packages with too many options and complicated syntax? Try wintree - a fast, simple and easy to use alternative to built-in and third party tree commands for all operating systems.
+
+> `wintree` is a simple, cross-platform command-line tool for generating directory tree listings. Written in Go, it provides a single, dependency-free binary that runs on Windows, macOS, and Linux. It's designed to be fast, intuitive, and simple, focusing on the most essential features like advanced filtering and easy output redirection.
 
 ## Key Features
 
