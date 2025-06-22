@@ -2,8 +2,8 @@
 
 > Tired of using complicated external tree packages with too many options and complicated syntax? Try wintree - a fast, simple and easy to use alternative to built-in and third party tree commands for all operating systems.
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/maximdribny/wintree)](https://github.com/maximdribny/wintree/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/maximdribny/wintree)](https://goreportcard.com/report/github.com/maximdribny/wintree)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/maxdribny/wintree)](https://github.com/maxdribny/wintree/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/maxdribny/wintree)](https://goreportcard.com/report/github.com/maxdribny/wintree)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 `wintree` is a modern, cross-platform command-line tool for generating directory tree listings. Written in Go, it provides a single, dependency-free binary that runs on Windows, macOS, and Linux. It's designed to be fast, intuitive, and powerful, focusing on the most essential features like advanced filtering and easy output redirection.
@@ -29,7 +29,7 @@ There are two easy ways to install `wintree`.
 
 This is the easiest way to get `wintree` without needing Go installed.
 
-1.  Go to the [**Latest Release**](https://github.com/maximdribny/wintree/releases/latest) page.
+1.  Go to the [**Latest Release**](https://github.com/maxdribny/wintree/releases/latest) page.
 2.  Download the archive for your operating system and architecture (e.g., `wintree_Windows_x86_64.zip` or `wintree_Darwin_arm64.tar.gz`).
 3.  Extract the `wintree` (or `wintree.exe`) binary.
 4.  Move the binary to a location in your system's `PATH` (e.g., `/usr/local/bin` on macOS/Linux or `C:\Windows\System32` on Windows) to make it runnable from anywhere.
@@ -40,7 +40,7 @@ This is the easiest way to get `wintree` without needing Go installed.
 If you have Go installed, you can build and install `wintree` with a single command:
 
 ```sh
-go install [github.com/maximdribny/wintree@latest](https://github.com/maximdribny/wintree@latest)
+go install [github.com/maxdribny/wintree@latest](https://github.com/maxdribny/wintree@latest)
 ```
 
 ## Usage
@@ -118,7 +118,7 @@ If you want to contribute to development:
 ### Clone the repository:
 
 ```bash
-git clone https://github.com/maximdribny/wintree.git
+git clone https://github.com/maxdribny/wintree.git
 ```
 
 ### Navigate to the directory:
