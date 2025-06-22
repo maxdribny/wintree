@@ -4,3 +4,6 @@ wintree.exe
 
 # macOS specific files
 .DS_Store
+
+# Distribution folder
+/dist
