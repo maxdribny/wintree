@@ -16,15 +16,15 @@ import (
 
 var (
 	excludePatterns []string
-	//TODO: finish the include pattern logic and uncomment
-	//includePatterns []string
+	includePatterns []string
 	outputFile      string
 	copyToClipboard bool
 )
 
 type filter struct {
-	excludeDirs map[string]struct{}
-	excludeExts map[string]struct{}
+	excludeDirs  map[string]struct{}
+	excludeExts  map[string]struct{}
+	includeGlobs []string
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -38,23 +38,17 @@ It allows for advanced filtering with inclusion and exclusion patterns
 and can output to the terminal, a file, or the system clipboard.`,
 	Args: cobra.MaximumNArgs(1), // We expect at most one argument: the path.
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Using RunE to return an error, which Cobra will print nicely.
-		// This is modern Go practice for CLIs
-
-		// 1. Determine Starting Path
+		// 1. Setup - Find Start Path
 		startPath := "."
 		if len(args) > 0 {
 			startPath = args[0]
 		}
-
-		// Clean the path to handle things like "path/.." or "./path" consistently
 		startPath, err := filepath.Abs(startPath)
 		if err != nil {
 			return fmt.Errorf("invalid starting path: %w", err)
 		}
 
-		// 2. Process Filters
-		filter := processFilters(excludePatterns)
+		filter := processFilters(excludePatterns, includePatterns)
 
 		// 3. Walk Directory
 		var output strings.Builder
@@ -145,22 +139,66 @@ and can output to the terminal, a file, or the system clipboard.`,
 }
 
 // processFilters takes the raw string slices from the flags and organizes them into maps for fast lookups
-func processFilters(exclude []string) filter {
+func processFilters(exclude, include []string) filter {
 	f := filter{
-		excludeDirs: make(map[string]struct{}),
-		excludeExts: make(map[string]struct{}),
+		excludeDirs:  make(map[string]struct{}),
+		excludeExts:  make(map[string]struct{}),
+		includeGlobs: include,
 	}
 
 	for _, pattern := range exclude {
-		if strings.HasPrefix(pattern, ".") {
-			// Extension filter
+		if strings.HasPrefix(pattern, ".") && !strings.Contains(pattern, string(filepath.Separator)) {
 			f.excludeExts[pattern] = struct{}{}
 		} else {
-			// Directory name filter
 			f.excludeDirs[pattern] = struct{}{}
 		}
 	}
 	return f
+}
+
+func findMatchingFiles(root string, f filter) ([]string, error) {
+	var matchingPaths = []string
+	isIncludeMode := len(f.includeGlobs) > 0
+
+	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Exclusion logic - always applied first
+		if d.IsDir() {
+			if _, shouldExclude := f.excludeDirs[d.Name()]; shouldExclude && path != root {
+				return fs.SkipDir
+			}
+		}
+		if ext := filepath.Ext(d.Name()); ext != "" {
+			if _, shouldExclude := f.excludeExts[ext]; shouldExclude {
+				return nil
+			}
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		if isIncludeMode {
+			match := false
+			for _, pattern := range f.includeGlobs {
+				if matched, _ := filepath.Match(pattern, d.Name()); matched {
+					match = true
+					break
+				}
+			}
+			if !match {
+				return nil // File does not match any include pattern, so skip it.
+			}
+		}
+
+		matchingPaths = append(matchingPaths, path)
+		return nil
+	})
+
+	return matchingPaths, walkErr
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -174,7 +212,7 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringSliceVarP(&excludePatterns, "exclude", "e", []string{}, "Patterns to exclude (dirs like 'node_modules' or exts like '.log')")
-	//rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Patterns to include (whitelist, e.g., *.go, *.md)")
+	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Patterns to include (whitelist, e.g., *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
 	rootCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy the output to the system clipboard")
 }
