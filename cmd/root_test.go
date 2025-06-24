@@ -309,7 +309,7 @@ func TestRootCmd(t *testing.T) {
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r) // Ignore copy error in test
 
 			// Check error
 			if tt.expectError && err == nil {
