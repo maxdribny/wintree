@@ -94,13 +94,18 @@ and can output to the terminal, a file, or the system clipboard.`,
 	},
 }
 
-// expandBraces expands brace patterns like "*.{go,js}" into {"*.go", "*.js"}.
+// expandBraces expands brace patterns like "*.{go,js}" into ["*.go", "*.js"]
 func expandBraces(pattern string) []string {
-	braceRegex := regexp.MustCompile(`\{([^}]+)\}`)
+	braceRegex := regexp.MustCompile(`\{([^}]*)\}`)
 	matches := braceRegex.FindStringSubmatch(pattern)
 
 	if len(matches) < 2 {
 		return []string{pattern} // No braces found
+	}
+
+	// Handle empty braces case - "{}"
+	if matches[1] == "" {
+		return []string{strings.Replace(pattern, matches[0], "", 1)}
 	}
 
 	options := strings.Split(matches[1], ",")
@@ -217,46 +222,83 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 
 // Construct the tree output as a string
 func buildTreeOutput(root string, paths []string) string {
-	var output strings.Builder
-	output.WriteString(filepath.Base(root) + "\n")
+	if len(paths) == 0 {
+		return filepath.Base(root) + "\n"
+	}
 
-	nodes := make(map[string]struct{})
+	// Initialize a map to hold all nodes (directories and files)
+	nodes := make(map[string]bool)
+	// Always include the root directory
+	nodes[root] = true
+
+	// Add all files and their parent directories to the nodes map
 	for _, path := range paths {
-		nodes[path] = struct{}{}
+		// Skip paths outside the root directory
+		if !strings.HasPrefix(path, root) {
+			continue
+		}
+
+		// Add the file itself
+		nodes[path] = true
+
 		// Add all parent directories of the path to the nodes map as well
 		dir := filepath.Dir(path)
-		for dir != root && dir != "." {
-			nodes[dir] = struct{}{}
+		for dir != root && dir != "." && dir != "/" {
+			nodes[dir] = true
 			dir = filepath.Dir(dir)
 		}
 	}
 
+	// Convert to a sorted slice for consistent output
 	sortedNodes := make([]string, 0, len(nodes))
 	for nodePath := range nodes {
 		sortedNodes = append(sortedNodes, nodePath)
 	}
 	sort.Strings(sortedNodes)
 
+	// Generate the tree output
+	var output strings.Builder
+	// Start with the root directory name
+	output.WriteString(filepath.Base(root) + "\n")
+
 	// A map to track which directory levels have more items, for drawing the tree with '|'
 	lastInDir := make(map[int]bool)
-	for i, path := range sortedNodes {
-		relPath, _ := filepath.Rel(root, path)
-		depth := strings.Count(relPath, string(filepath.Separator))
+
+	// Process each node (skipping the root which we already output)
+	for i := 1; i < len(sortedNodes); i++ {
+		path := sortedNodes[i]
+		// Get relative path from root
+		relPath, err := filepath.Rel(root, path)
+		if err != nil {
+			continue
+		}
+
+		// Calculate the depth of this node relative to root
+		parts := strings.Split(relPath, string(filepath.Separator))
+		depth := len(parts) - 1
 
 		// Check if this is the last entry at its depth or in its parent directory
 		isLast := true
-		if i+1 < len(sortedNodes) {
-			nextRelPath, _ := filepath.Rel(root, sortedNodes[i+1])
-			// If the next item has the same directory prefix, this one isn't the last.
-			if strings.HasPrefix(nextRelPath, filepath.Dir(relPath)+string(filepath.Separator)) {
-				isLast = false
+		if i < len(sortedNodes)-1 {
+			nextPath := sortedNodes[i+1]
+			nextRelPath, err := filepath.Rel(root, nextPath)
+			if err == nil {
+				nextParts := strings.Split(nextRelPath, string(filepath.Separator))
+				nextDepth := len(nextParts) - 1
+
+				// If next item is at same depth and has same parent, this isn't last
+				if nextDepth == depth && len(parts) > 1 && len(nextParts) > 1 &&
+					parts[0] == nextParts[0] {
+					isLast = false
+				}
 			}
 		}
+		lastInDir[depth] = isLast
 
 		// Print indentation
 		for j := 0; j < depth; j++ {
 			if lastInDir[j] {
-				output.WriteString("    ") // Parent was the last, so no vertical line
+				output.WriteString("    ")
 			} else {
 				output.WriteString("│   ")
 			}
@@ -265,10 +307,8 @@ func buildTreeOutput(root string, paths []string) string {
 		// Print branch prefix
 		if isLast {
 			output.WriteString("└── ")
-			lastInDir[depth] = true
 		} else {
 			output.WriteString("├── ")
-			lastInDir[depth] = false
 		}
 
 		output.WriteString(filepath.Base(path) + "\n")
