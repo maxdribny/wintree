@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +38,7 @@ func BenchmarkFindMatchingFiles(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			file := filepath.Join(dir, "file"+string(rune(i))+ext)
+			file := filepath.Join(dir, fmt.Sprintf("file%d%s", i, ext))
 			err = os.WriteFile(file, []byte("content"), 0644)
 			if err != nil {
 				b.Fatal(err)
@@ -64,12 +65,12 @@ func BenchmarkBuildTreeOutput(b *testing.B) {
 	var paths []string
 	for i := 0; i < 50; i++ {
 		for j := 0; j < 5; j++ {
-			dir := filepath.Join(tempDir, "dir"+string(rune(i)))
+			dir := filepath.Join(tempDir, fmt.Sprintf("dir%d", i))
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
 				b.Fatal(err)
 			}
-			file := filepath.Join(dir, "file"+string(rune(j))+".go")
+			file := filepath.Join(dir, fmt.Sprintf("file%d.go", j))
 			err = os.WriteFile(file, []byte("content"), 0644)
 			if err != nil {
 				b.Fatal(err)
