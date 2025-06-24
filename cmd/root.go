@@ -13,6 +13,8 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
+
+	"regexp"
 )
 
 var (
@@ -20,6 +22,7 @@ var (
 	includePatterns []string
 	outputFile      string
 	copyToClipboard bool
+	showPatterns    bool
 )
 
 type filter struct {
@@ -37,6 +40,12 @@ It allows for advanced filtering with inclusion and exclusion patterns
 and can output to the terminal, a file, or the system clipboard.`,
 	Args: cobra.MaximumNArgs(1), // We expect at most one argument: the path.
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Check if the user wants pattern help
+		if showPatterns {
+			printPatternHelp()
+			return nil
+		}
+
 		// 1. Setup - Find Start Path
 		startPath := "."
 		if len(args) > 0 {
@@ -85,10 +94,42 @@ and can output to the terminal, a file, or the system clipboard.`,
 	},
 }
 
+// expandBraces expands brace patterns like "*.{go,js}" into {"*.go", "*.js"}.
+func expandBraces(pattern string) []string {
+	braceRegex := regexp.MustCompile(`\{([^}]+)\}`)
+	matches := braceRegex.FindStringSubmatch(pattern)
+
+	if len(matches) < 2 {
+		return []string{pattern} // No braces found
+	}
+
+	options := strings.Split(matches[1], ",")
+	var expanded []string
+
+	for _, option := range options {
+		newPattern := strings.Replace(pattern, matches[0], strings.TrimSpace(option), 1)
+		expanded = append(expanded, newPattern)
+	}
+
+	return expanded
+}
+
 func processFilters(exclude, include []string) filter {
+	var expandedExclude, expandedInclude []string
+
+	// Expand braces for exclude patterns
+	for _, pattern := range exclude {
+		expandedExclude = append(expandedExclude, expandBraces(pattern)...)
+	}
+
+	// Expand braces for include patterns
+	for _, pattern := range include {
+		expandedInclude = append(expandedInclude, expandBraces(pattern)...)
+	}
+
 	return filter{
-		excludeGlobs: exclude,
-		includeGlobs: include,
+		excludeGlobs: expandedExclude,
+		includeGlobs: expandedInclude,
 	}
 }
 
@@ -249,4 +290,91 @@ func init() {
 	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Glob patterns to include (e.g., .git, *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
 	rootCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy the output to the system clipboard")
+	rootCmd.Flags().BoolVarP(&showPatterns, "show-patterns", "p", false, "Show a guide for using glob pattenrns")
+}
+
+func printPatternHelp() {
+	fmt.Print(`
+GLOB PATTERN GUIDE
+==================
+
+Glob patterns are simple wildcard patterns used to match file and directory names.
+Here are the most common patterns you can use with wintree:
+
+BASIC PATTERNS:
+┌─────────────┬─────────────────────────────────────────────────────────┐
+│ Pattern     │ Description                                             │
+├─────────────┼─────────────────────────────────────────────────────────┤
+│ *           │ Matches any number of characters (except path separator)│
+│ ?           │ Matches exactly one character                           │
+│ [abc]       │ Matches any one of the characters a, b, or c            │
+│ [a-z]       │ Matches any character from a to z                       │
+│ [!abc]      │ Matches any character except a, b, or c                 │
+│ **          │ Not supported                                           │
+│ *.ext       │ Matches all files ending with .ext                      │
+│ file*       │ Matches all files starting with 'file'                  │
+│ *file*      │ Matches all files containing 'file'                     │
+│ file?.txt   │ Matches file1.txt, fileA.txt, etc.                      │
+│ [0-9]*      │ Matches files starting with a digit                     │
+│ *.[ch]      │ Matches files ending with .c or .h                      │
+│ *.{go,js}   │ Expands to *.go and *.js (Now supported!)               │
+│ dir/*       │ Matches all files in 'dir' directory                    │
+│ dir/**      │ Not supported; use --include "dir" for directories      │
+└─────────────┴─────────────────────────────────────────────────────────┘
+
+COMMON USE CASES:
+
+📁 Exclude common directories:
+   --exclude .git --exclude node_modules --exclude .vscode
+
+📄 Include only specific file types:
+   --include "*.go" --include "*.md" --include "*.txt"
+
+🚫 Exclude log and temporary files:
+   --exclude "*.log" --exclude "*.tmp" --exclude "*.temp"
+
+💻 Include only source code files:
+   --include "*.go" --include "*.js" --include "*.py" --include "*.java"
+
+🔧 Exclude build and cache directories:
+   --exclude target --exclude build --exclude dist --exclude .cache
+
+EXAMPLES:
+
+1. Show only Go files:
+   wintree --include "*.go"
+
+2. Exclude git and node_modules directories:
+   wintree --exclude .git --exclude node_modules
+
+3. Show only documentation files:
+   wintree --include "*.md" --include "*.txt" --include "*.rst"
+
+4. Exclude all hidden files and directories (starting with .):
+   wintree --exclude ".*"
+
+5. Include files starting with 'test':
+   wintree --include "test*"
+
+6. Include files ending with specific extensions:
+   wintree --include "*.{go,js,py}"
+
+7. Include files with a single character suffix:
+   wintree --include "file?.txt"
+
+8. Include files starting with a digit:
+   wintree --include "[0-9]*"
+
+9. Include C and header files:
+   wintree --include "*.[ch]"
+
+TIPS:
+• You can use multiple --include and --exclude flags
+• Patterns are case-sensitive on Linux/Mac, case-insensitive on Windows
+• Directory names are matched exactly (no glob patterns for directories)
+• File names support full glob pattern matching
+• Exclusions are processed before inclusions
+• Curly brace expansion (*.{go,js}) is supported
+
+`)
 }
