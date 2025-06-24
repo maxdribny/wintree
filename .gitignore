@@ -12,3 +12,4 @@ wintree.exe
 # Build scripts
 build.ps1
 build-local.ps1
+build-version.ps1

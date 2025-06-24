@@ -286,6 +286,8 @@ func TestRootCmd(t *testing.T) {
 			outputFile = ""
 			copyToClipboard = false
 			showPatterns = false
+			showVersion = false
+			useSmartDefaults = false
 
 			// Set up flags
 			excludePatterns = tt.excludeFlags
@@ -307,7 +309,9 @@ func TestRootCmd(t *testing.T) {
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			if _, err := io.Copy(&buf, r); err != nil {
+				t.Errorf("failed to copy output to buffer: %v", err)
+			}
 
 			// Check error
 			if tt.expectError && err == nil {
