@@ -13,3 +13,6 @@ wintree.exe
 build.ps1
 build-local.ps1
 build-version.ps1
+
+# Go crap
+coverage.out
