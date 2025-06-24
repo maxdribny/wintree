@@ -53,13 +53,16 @@ wintree [path] [flags]
 
 ### Flags
 
-| Flag              | Shorthand | Description                                                       | Example                                 |
-|-------------------|-----------|-------------------------------------------------------------------|-----------------------------------------|
-| `--exclude <str>` | `-e`      | Exclude directories or extensions. Can be used multiple times.    | `-e .git -e .log`                        |
-| `--include <glob>`| `-i`      | Whitelist files using glob patterns. Can be used multiple times.  | `-i "*.go" -i "Makefile"`               |
-| `--out <file>`    | `-o`      | Write the output to the specified file instead of the console.    | `-o my_tree.txt`                        |
-| `--copy`          | `-c`      | Copy the final output tree to the system clipboard.               | `-c`                                    |
-| `--help`          | `-h`      | Show the help message.                                            | `--help`                                |
+| Flag                | Shorthand | Description                                                       | Example                                 |
+|---------------------|-----------|-------------------------------------------------------------------|-----------------------------------------|
+| `--exclude <str>`   | `-e`      | Exclude directories or extensions. Can be used multiple times.    | `-e .git -e .log`                        |
+| `--include <glob>`  | `-i`      | Whitelist files using glob patterns. Can be used multiple times.  | `-i "*.go" -i "Makefile"`               |
+| `--out <file>`      | `-o`      | Write the output to the specified file instead of the console.    | `-o my_tree.txt`                        |
+| `--copy`            | `-c`      | Copy the final output tree to the system clipboard.               | `-c`                                    |
+| `--smart-defaults`  | `-s`      | Apply smart defaults based on detected project type.              | `-s`                                    |
+| `--show-patterns`   | `-p`      | Show a guide for using glob patterns.                             | `-p`                                    |
+| `--version`         | `-v`      | Show version information.                                         | `-v`                                    |
+| `--help`            | `-h`      | Show the help message.                                            | `--help`                                |
 
 ## Examples
 
@@ -109,6 +112,32 @@ Generate a tree of the current directory, excluding `node_modules`, and copy it 
 
 ```bash
 wintree -e node_modules -c
+```
+
+### Smart Defaults
+
+Apply intelligent filtering based on the detected project type. This automatically excludes common build artifacts, dependency directories, and temporary files.
+
+```bash
+wintree --smart-defaults
+```
+
+**Supported project types:**
+- **Go**: Excludes `vendor`, `*.exe`, `*.dll`, `*.so`, `*.dylib`
+- **Node.js/JavaScript**: Excludes `node_modules`, `dist`, `build`, `.next`, `coverage`, `*.log`
+- **Python**: Excludes `__pycache__`, `*.pyc`, `venv`, `.env`, `pip-log.txt`
+- **Rust**: Excludes `target`, `Cargo.lock`
+- **Java**: Excludes `target`, `build`, `*.class`, `*.jar`
+- **And many more...**
+
+All project types automatically exclude `.git`, `.DS_Store`, and `Thumbs.db`.
+
+### Show Pattern Help
+
+Get a comprehensive guide on using glob patterns:
+
+```bash
+wintree --show-patterns
 ```
 
 ## Building From Source

@@ -286,6 +286,8 @@ func TestRootCmd(t *testing.T) {
 			outputFile = ""
 			copyToClipboard = false
 			showPatterns = false
+			showVersion = false
+			useSmartDefaults = false
 
 			// Set up flags
 			excludePatterns = tt.excludeFlags

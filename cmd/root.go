@@ -17,12 +17,21 @@ import (
 	"regexp"
 )
 
+// Version information
+var (
+	Version   = "dev"
+	Commit    = "unknown"
+	BuildDate = "unknown"
+)
+
 var (
 	excludePatterns []string
 	includePatterns []string
 	outputFile      string
 	copyToClipboard bool
 	showPatterns    bool
+	showVersion     bool
+	useSmartDefaults bool
 )
 
 type filter struct {
@@ -40,6 +49,12 @@ It allows for advanced filtering with inclusion and exclusion patterns
 and can output to the terminal, a file, or the system clipboard.`,
 	Args: cobra.MaximumNArgs(1), // We expect at most one argument: the path.
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Check if the user wants version info
+		if showVersion {
+			printVersionInfo()
+			return nil
+		}
+
 		// Check if the user wants pattern help
 		if showPatterns {
 			printPatternHelp()
@@ -54,6 +69,11 @@ and can output to the terminal, a file, or the system clipboard.`,
 		startPath, err := filepath.Abs(startPath)
 		if err != nil {
 			return fmt.Errorf("invalid starting path: %w", err)
+		}
+
+		// Apply smart defaults if requested
+		if useSmartDefaults {
+			applySmartDefaults(startPath)
 		}
 
 		filters := processFilters(excludePatterns, includePatterns)
@@ -330,7 +350,9 @@ func init() {
 	rootCmd.Flags().StringSliceVarP(&includePatterns, "include", "i", []string{}, "Glob patterns to include (e.g., .git, *.go, *.md)")
 	rootCmd.Flags().StringVarP(&outputFile, "out", "o", "", "Output to a file instead of the console")
 	rootCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy the output to the system clipboard")
-	rootCmd.Flags().BoolVarP(&showPatterns, "show-patterns", "p", false, "Show a guide for using glob pattenrns")
+	rootCmd.Flags().BoolVarP(&showPatterns, "show-patterns", "p", false, "Show a guide for using glob patterns")
+	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version information")
+	rootCmd.Flags().BoolVarP(&useSmartDefaults, "smart-defaults", "s", false, "Apply smart defaults based on detected project type")
 }
 
 func printPatternHelp() {
@@ -417,4 +439,126 @@ TIPS:
 • Curly brace expansion (*.{go,js}) is supported
 
 `)
+}
+
+// printVersionInfo displays version information
+func printVersionInfo() {
+	fmt.Printf("wintree %s\n", Version)
+	fmt.Printf("  Commit: %s\n", Commit)
+	fmt.Printf("  Built:  %s\n", BuildDate)
+	fmt.Printf("  Platform: %s\n", "cross-platform")
+}
+
+// detectProjectType analyzes the directory to determine project type
+func detectProjectType(path string) string {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return "unknown"
+	}
+
+	for _, file := range files {
+		name := file.Name()
+		switch name {
+		case "go.mod", "go.sum":
+			return "go"
+		case "package.json", "node_modules":
+			return "node"
+		case "requirements.txt", "pyproject.toml", "setup.py", "Pipfile":
+			return "python"
+		case "Cargo.toml":
+			return "rust"
+		case "pom.xml", "build.gradle":
+			return "java"
+		case "Gemfile":
+			return "ruby"
+		case "composer.json":
+			return "php"
+		case "package.swift", "Package.swift":
+			return "swift"
+		case "pubspec.yaml":
+			return "dart"
+		case "mix.exs":
+			return "elixir"
+		case ".gitignore":
+			// Continue checking for more specific indicators
+			continue
+		}
+	}
+
+	// Check for common framework files
+	for _, file := range files {
+		name := file.Name()
+		switch name {
+		case "angular.json":
+			return "angular"
+		case "next.config.js", "next.config.mjs":
+			return "nextjs"
+		case "nuxt.config.js", "nuxt.config.ts":
+			return "nuxtjs"
+		case "gatsby-config.js":
+			return "gatsby"
+		case "svelte.config.js":
+			return "svelte"
+		case "vite.config.js", "vite.config.ts":
+			return "vite"
+		case "webpack.config.js":
+			return "webpack"
+		}
+	}
+
+	return "unknown"
+}
+
+// getSmartDefaults returns smart exclusion patterns based on project type
+func getSmartDefaults(projectType string) []string {
+	commonDefaults := []string{".git", ".DS_Store", "Thumbs.db"}
+
+	switch projectType {
+	case "go":
+		return append(commonDefaults, "vendor", "*.exe", "*.dll", "*.so", "*.dylib")
+	case "node", "angular", "nextjs", "nuxtjs", "gatsby", "svelte", "vite", "webpack":
+		return append(commonDefaults, "node_modules", "dist", "build", ".next", ".nuxt", "coverage", "*.log")
+	case "python":
+		return append(commonDefaults, "__pycache__", "*.pyc", "*.pyo", "*.pyd", ".Python", "env", "venv", ".env", ".venv", "pip-log.txt", "pip-delete-this-directory.txt", ".coverage")
+	case "rust":
+		return append(commonDefaults, "target", "Cargo.lock")
+	case "java":
+		return append(commonDefaults, "target", "build", "*.class", "*.jar", "*.war", "*.ear")
+	case "ruby":
+		return append(commonDefaults, "vendor", ".bundle", "*.gem")
+	case "php":
+		return append(commonDefaults, "vendor", "composer.lock")
+	case "swift":
+		return append(commonDefaults, ".build", "Packages", "*.xcodeproj", "*.xcworkspace")
+	case "dart":
+		return append(commonDefaults, ".dart_tool", "build", ".packages")
+	case "elixir":
+		return append(commonDefaults, "_build", "deps", "*.beam")
+	default:
+		return append(commonDefaults, "node_modules", "target", "build", "dist", "vendor", "*.log", "*.tmp")
+	}
+}
+
+// applySmartDefaults applies smart exclusion patterns based on detected project type
+func applySmartDefaults(path string) {
+	projectType := detectProjectType(path)
+	smartDefaults := getSmartDefaults(projectType)
+
+	// Only add defaults that aren't already in excludePatterns
+	for _, defaultPattern := range smartDefaults {
+		alreadyExists := false
+		for _, existing := range excludePatterns {
+			if existing == defaultPattern {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			excludePatterns = append(excludePatterns, defaultPattern)
+		}
+	}
+
+	fmt.Printf("🧠 Smart defaults applied for %s project\n", projectType)
+	fmt.Printf("   Excluding: %s\n", strings.Join(smartDefaults, ", "))
+	fmt.Println()
 }
