@@ -256,3 +256,67 @@ func TestEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestFindMatchingFiles_DepthMode(t *testing.T) {
+	testDir := setupTestDirectory(t)
+	defer os.RemoveAll(testDir)
+
+	tests := []struct {
+		name          string
+		depth         int
+		expectedFiles []string
+		unexpected    []string
+	}{
+		{
+			name:          "depth 0",
+			depth:         0,
+			expectedFiles: []string{"main.go", "README.md", "go.mod", ".gitignore"},
+			unexpected:    []string{"app.go", "main_test.go", "api.md"},
+		},
+		{
+			name:          "depth 1",
+			depth:         1,
+			expectedFiles: []string{"main.go", "app.go", "utils.js", "main_test.go", "api.md", "settings.json"},
+			unexpected:    []string{"index.js"}, // This is at depth 2
+		},
+		{
+			name:          "unlimited depth",
+			depth:         -1, // -1 means unlimited
+			expectedFiles: []string{"main.go", "app.go", "index.js", "output.bin"},
+			unexpected:    []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set the global maxDepth for the test
+			maxDepth = tt.depth
+
+		 filters := processFilters([]string{}, []string{}) // No filters, just depth
+			matchingFiles, err := findMatchingFiles(testDir, filters)
+			if err != nil {
+				t.Fatalf("findMatchingFiles() with depth %d error = %v", tt.depth, err)
+			}
+
+			// Convert to set of basenames for easier checking
+			fileNames := make(map[string]bool)
+			for _, file := range matchingFiles {
+				fileNames[filepath.Base(file)] = true
+			}
+
+			for _, expected := range tt.expectedFiles {
+				if !fileNames[expected] {
+					t.Errorf("Depth %d: Expected file %q not found", tt.depth, expected)
+				}
+			}
+
+			for _, unexpectedFile := range tt.unexpected {
+				if fileNames[unexpectedFile] {
+					t.Errorf("Depth %d: Unexpected file %q found", tt.depth, unexpectedFile)
+				}
+			}
+		})
+	}
+	// Reset maxDepth after tests to avoid affecting other tests
+	maxDepth = -1
+}
