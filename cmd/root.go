@@ -470,11 +470,15 @@ TIPS:
 }
 
 // printVersionInfo displays version information
+// printVersionInfo displays version information
 func printVersionInfo() {
-	fmt.Printf("wintree %s\n", Version)
-	fmt.Printf("  Commit: %s\n", Commit)
-	fmt.Printf("  Built:  %s\n", BuildDate)
-	fmt.Printf("  Platform: %s\n", "cross-platform")
+	if Version == "dev" {
+		// For dev builds, try to get version from git describe
+		fmt.Printf("wintree %s (development build)\n", Version)
+	} else {
+		// For release builds, just show the version
+		fmt.Printf("wintree %s\n", Version)
+	}
 }
 
 // detectProjectType analyzes the directory to determine project type
