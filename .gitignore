@@ -10,9 +10,9 @@ wintree.exe
 /build
 
 # Build scripts
-build.ps1
 build-local.ps1
-build-version.ps1
+build-release.ps1
 
-# Go crap
+# Go coverage crap
+*.out
 coverage.out
