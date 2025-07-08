@@ -162,7 +162,6 @@ func processFilters(exclude, include []string) filter {
 // findMatchingFiles handles directory-based includes and file-based glob includes.
 func findMatchingFiles(root string, f filter) ([]string, error) {
 	var matchingPaths []string
-	isIncludeMode := len(f.includeGlobs) > 0
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -201,52 +200,63 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 		}
 
 		// If not in include mode, add all non-directory files.
-		if !isIncludeMode {
-			if !d.IsDir() {
+		if len(f.includeGlobs) == 0 && !d.IsDir() {
+			// Also check depth for files when not in include mode.
+			relPath, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			depth := strings.Count(relPath, string(filepath.Separator))
+			if maxDepth == -1 || depth < maxDepth+1 {
 				matchingPaths = append(matchingPaths, path)
 			}
-			return nil
 		}
 
 		// In include mode, we must match files or directories explicitly.
-		// Case 1: A directory is an exact match for an include pattern.
-		// If so, we do a sub-walk and add all its files.
-		if d.IsDir() {
-			for _, pattern := range f.includeGlobs {
-				// Don't glob, use exact match for directory inclusion.
-				if d.Name() == pattern {
-					// This directory is explicitly included. Walk it and add all files within.
-					subWalkErr := filepath.WalkDir(path, func(subPath string, subD fs.DirEntry, _ error) error {
-						if !subD.IsDir() {
-							// Check if this sub-file is excluded.
-							isExcluded := false
-							for _, excludePattern := range f.excludeGlobs {
-								if matched, _ := filepath.Match(excludePattern, subD.Name()); matched {
-									isExcluded = true
-									break
+		if len(f.includeGlobs) > 0 {
+			// Case 1: A directory is an exact match for an include pattern.
+			// If so, we do a sub-walk and add all its files.
+			if d.IsDir() {
+				for _, pattern := range f.includeGlobs {
+					if d.Name() == pattern {
+						// This directory is explicitly included. Walk it and add all files within.
+						subWalkErr := filepath.WalkDir(path, func(subPath string, subD fs.DirEntry, _ error) error {
+							if !subD.IsDir() {
+								// Check if this sub-file is excluded.
+								isExcluded := false
+								for _, excludePattern := range f.excludeGlobs {
+									if matched, _ := filepath.Match(excludePattern, subD.Name()); matched {
+										isExcluded = true
+										break
+									}
+								}
+								if !isExcluded {
+									matchingPaths = append(matchingPaths, subPath)
 								}
 							}
-							if !isExcluded {
-								matchingPaths = append(matchingPaths, subPath)
-							}
+							return nil
+						})
+						if subWalkErr != nil {
+							return subWalkErr
 						}
-						return nil
-					})
-					if subWalkErr != nil {
-						return subWalkErr
+						// We've processed this directory, so skip it in the main walk to avoid duplication.
+						return fs.SkipDir
 					}
-					// We've processed this directory, so skip it in the main walk.
-					return fs.SkipDir
 				}
-			}
-		}
-
-		// Case 2: A file matches a glob-style include pattern.
-		if !d.IsDir() {
-			for _, pattern := range f.includeGlobs {
-				if matched, _ := filepath.Match(pattern, d.Name()); matched {
-					matchingPaths = append(matchingPaths, path)
-					break
+			} else { // Case 2: It's a file, check if it matches a glob-style include pattern.
+				for _, pattern := range f.includeGlobs {
+					if matched, _ := filepath.Match(pattern, d.Name()); matched {
+						// Also check depth for files when in include mode.
+						relPath, err := filepath.Rel(root, path)
+						if err != nil {
+							return err
+						}
+						depth := strings.Count(relPath, string(filepath.Separator))
+						if maxDepth == -1 || depth < maxDepth+1 {
+							matchingPaths = append(matchingPaths, path)
+							break // Found a match, no need to check other patterns
+						}
+					}
 				}
 			}
 		}

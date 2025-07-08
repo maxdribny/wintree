@@ -54,6 +54,12 @@ func TestFindMatchingFiles_IncludeMode(t *testing.T) {
 	testDir := setupTestDirectory(t)
 	defer os.RemoveAll(testDir)
 
+	// Save original maxDepth and restore it after test
+	originalMaxDepth := maxDepth
+	defer func() { maxDepth = originalMaxDepth }()
+
+	maxDepth = -1
+
 	tests := []struct {
 		name            string
 		includePatterns []string
@@ -292,7 +298,7 @@ func TestFindMatchingFiles_DepthMode(t *testing.T) {
 			// Set the global maxDepth for the test
 			maxDepth = tt.depth
 
-		 filters := processFilters([]string{}, []string{}) // No filters, just depth
+			filters := processFilters([]string{}, []string{}) // No filters, just depth
 			matchingFiles, err := findMatchingFiles(testDir, filters)
 			if err != nil {
 				t.Fatalf("findMatchingFiles() with depth %d error = %v", tt.depth, err)
