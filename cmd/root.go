@@ -199,14 +199,21 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 			}
 		}
 
-		// If not in include mode, add all non-directory files.
-		if len(f.includeGlobs) == 0 && !d.IsDir() {
+		// If not in include mode, add everything that respects the depth limit.
+		if len(f.includeGlobs) == 0 {
 			// Also check depth for files when not in include mode.
 			relPath, err := filepath.Rel(root, path)
 			if err != nil {
 				return err
 			}
+
+			if path == root {
+				return nil
+			}
+
 			depth := strings.Count(relPath, string(filepath.Separator))
+
+			// Add any item that is within the allowed depth.
 			if maxDepth == -1 || depth < maxDepth+1 {
 				matchingPaths = append(matchingPaths, path)
 			}
