@@ -330,3 +330,101 @@ func TestRootCmd(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildTreeOutput_WithFullPath(t *testing.T) {
+	// Create a temporary directory structure for testing
+	tempDir, err := os.MkdirTemp("", "wintree_test_fullpath")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test files
+	testFiles := []string{
+		"file1.go",
+		"subdir/file2.js",
+	}
+
+	for _, file := range testFiles {
+		fullPath := filepath.Join(tempDir, file)
+		err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.WriteFile(fullPath, []byte("test content"), 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Get full paths for the files
+	paths := make([]string, len(testFiles))
+	for i, file := range testFiles {
+		paths[i] = filepath.Join(tempDir, file)
+	}
+
+	// Test with showFullPath = false (default behaviour)
+	t.Run("without full path", func(t *testing.T) {
+		showFullPath = false
+		output := buildTreeOutput(tempDir, paths)
+
+		// Should NOT contain the full path
+		if strings.HasPrefix(output, tempDir) {
+			t.Error("buildTreeOutput() should not start with the full path when showFullPath=false")
+		}
+
+		// Should start with base directory name
+		if !strings.HasPrefix(output, filepath.Base(tempDir)) {
+			t.Errorf("buildTreeOutput() should start with base directory name %q", filepath.Base(tempDir))
+		}
+	})
+
+	// Test with showFullPath = true
+	t.Run("with full path", func(t *testing.T) {
+		showFullPath = true
+
+		defer func() {
+			showFullPath = false
+		}()
+
+		output := buildTreeOutput(tempDir, paths)
+
+		// Should contain the full path as first line
+		lines := strings.Split(output, "\n")
+		if len(lines) < 2 {
+			t.Errorf("Output should have at least two lines")
+		}
+
+		if lines[0] != tempDir {
+			t.Errorf("First line should be full path: got %q, want %q", lines[0], tempDir)
+		}
+
+		if lines[1] != filepath.Base(tempDir) {
+			t.Errorf("Second line should be base path: got %q, want %q", lines[1], filepath.Base(tempDir))
+		}
+	})
+
+	// Test with empty directory
+	t.Run("empty directory", func(t *testing.T) {
+		showFullPath = true
+
+		defer func() {
+			showFullPath = false
+		}()
+
+		output := buildTreeOutput(tempDir, []string{})
+
+		lines := strings.Split(strings.TrimSpace(output), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("Empty directory output should have exactly two lines, got %d", len(lines))
+		}
+
+		if lines[0] != tempDir {
+			t.Errorf("First line should be full path: got %q, want %q", lines[0], tempDir)
+		}
+
+		if lines[1] != filepath.Base(tempDir) {
+			t.Errorf("Second line should be base path: got %q, want %q", lines[1], filepath.Base(tempDir))
+		}
+	})
+}

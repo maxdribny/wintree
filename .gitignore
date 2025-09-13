@@ -16,3 +16,4 @@ build-release.ps1
 # Go coverage crap
 *.out
 coverage.out
+coverage
