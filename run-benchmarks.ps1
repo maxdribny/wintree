@@ -14,12 +14,9 @@ $outputfile = if ($output) { $output } else { "benchmarks/bench_$timestamp.txt" 
 New-Item -ItemType Directory -Path "benchmarks" -Force | Out-Null
 
 # Run benchmarks with proper escaping
-$result = go test "-bench=." -benchmem -count=$iterations ./cmd
+$result = go test "-bench=." -benchmem "-count=$iterations" ./cmd
 
 # Save to output file
 $result | Out-File -FilePath $outputfile
-
-# Also display to console
-Write-Host $result
 
 Write-Host "`nBenchmark results saved to: $outputfile" -ForegroundColor Cyan

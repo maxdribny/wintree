@@ -1,0 +1,26 @@
+goos: windows
+goarch: amd64
+pkg: github.com/maxdribny/wintree/cmd
+cpu: Intel(R) Core(TM) i9-14900K
+BenchmarkExpandBraces-32         	  684103	      1699 ns/op	    2289 B/op	      36 allocs/op
+BenchmarkExpandBraces-32         	  716468	      1706 ns/op	    2292 B/op	      36 allocs/op
+BenchmarkExpandBraces-32         	  700888	      1722 ns/op	    2293 B/op	      36 allocs/op
+BenchmarkExpandBraces-32         	  718351	      1714 ns/op	    2295 B/op	      36 allocs/op
+BenchmarkExpandBraces-32         	  645868	      1712 ns/op	    2294 B/op	      36 allocs/op
+BenchmarkProcessFilters-32       	  201344	      6050 ns/op	    9970 B/op	     134 allocs/op
+BenchmarkProcessFilters-32       	  198975	      6019 ns/op	    9966 B/op	     134 allocs/op
+BenchmarkProcessFilters-32       	  198409	      6037 ns/op	    9968 B/op	     134 allocs/op
+BenchmarkProcessFilters-32       	  202123	      6075 ns/op	    9970 B/op	     134 allocs/op
+BenchmarkProcessFilters-32       	  197798	      6021 ns/op	    9970 B/op	     134 allocs/op
+BenchmarkFindMatchingFiles-32    	    3192	    376024 ns/op	  146535 B/op	    1632 allocs/op
+BenchmarkFindMatchingFiles-32    	    3146	    365672 ns/op	  131814 B/op	    1542 allocs/op
+BenchmarkFindMatchingFiles-32    	    3090	    364986 ns/op	  146894 B/op	    1632 allocs/op
+BenchmarkFindMatchingFiles-32    	    3219	    366381 ns/op	  146766 B/op	    1632 allocs/op
+BenchmarkFindMatchingFiles-32    	    3252	    359947 ns/op	  146663 B/op	    1632 allocs/op
+BenchmarkBuildTreeOutput-32      	    3921	    303471 ns/op	  106160 B/op	    1125 allocs/op
+BenchmarkBuildTreeOutput-32      	    3957	    300895 ns/op	  106176 B/op	    1125 allocs/op
+BenchmarkBuildTreeOutput-32      	    3835	    303091 ns/op	  106178 B/op	    1125 allocs/op
+BenchmarkBuildTreeOutput-32      	    3943	    297753 ns/op	  104840 B/op	    1125 allocs/op
+BenchmarkBuildTreeOutput-32      	    3864	    302219 ns/op	  106177 B/op	    1125 allocs/op
+PASS
+ok  	github.com/maxdribny/wintree/cmd	32.763s
