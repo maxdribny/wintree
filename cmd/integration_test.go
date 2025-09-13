@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -325,4 +326,67 @@ func TestFindMatchingFiles_DepthMode(t *testing.T) {
 	}
 	// Reset maxDepth after tests to avoid affecting other tests
 	maxDepth = -1
+}
+
+func TestFullPathFlag(t *testing.T) {
+	testDir := setupTestDirectory(t)
+	defer os.RemoveAll(testDir)
+
+	// save original values
+	originalShowFullPath := showFullPath
+	originalMaxDepth := maxDepth
+	defer func() {
+		showFullPath = originalShowFullPath
+		maxDepth = originalMaxDepth
+	}()
+
+	t.Run("full path flag enabled", func(t *testing.T) {
+		showFullPath = true
+		maxDepth = -1
+
+		filters := processFilters([]string{}, []string{})
+		matchingFiles, err := findMatchingFiles(testDir, filters)
+		if err != nil {
+			t.Fatalf("findMatchingFiles() error = %v", err)
+		}
+
+		output := buildTreeOutput(testDir, matchingFiles)
+		lines := strings.Split(output, "\n")
+
+		// First line should be the full path
+		if lines[0] != testDir {
+			t.Errorf("Expected first line to be full path %q, got %q", testDir, lines[0])
+		}
+
+		// Second line should be the base directory name
+		expectedBaseName := filepath.Base(testDir)
+		if lines[1] != expectedBaseName {
+			t.Errorf("Expected second line to be base name %q, got %q", expectedBaseName, lines[1])
+		}
+	})
+
+	t.Run("full path flag disabled", func(t *testing.T) {
+		showFullPath = false
+		maxDepth = -1
+
+		filters := processFilters([]string{}, []string{})
+		matchingFiles, err := findMatchingFiles(testDir, filters)
+		if err != nil {
+			t.Fatalf("findMatchingFiles() error = %v", err)
+		}
+
+		output := buildTreeOutput(testDir, matchingFiles)
+		lines := strings.Split(output, "\n")
+
+		// First line should be the base name, not the full path
+		expectedBaseName := filepath.Base(testDir)
+		if lines[0] != expectedBaseName {
+			t.Errorf("Expected first line to be base name %q, got %q", expectedBaseName, lines[0])
+		}
+
+		// Should NOT start with full path
+		if strings.HasPrefix(lines[0], testDir) {
+			t.Errorf("Output should not start with full path %q when flag is disabled", testDir)
+		}
+	})
 }

@@ -33,6 +33,7 @@ var (
 	showVersion      bool
 	useSmartDefaults bool
 	maxDepth         int
+	showFullPath     bool
 )
 
 type filter struct {
@@ -277,7 +278,12 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 // Construct the tree output as a string
 func buildTreeOutput(root string, paths []string) string {
 	if len(paths) == 0 {
-		return filepath.Base(root) + "\n"
+		var output strings.Builder
+		if showFullPath {
+			output.WriteString(root + "\n")
+		}
+		output.WriteString(filepath.Base(root) + "\n")
+		return output.String()
 	}
 
 	// Initialize a map to hold all nodes (directories and files)
@@ -312,6 +318,12 @@ func buildTreeOutput(root string, paths []string) string {
 
 	// Generate the tree output
 	var output strings.Builder
+
+	// Add full path if flag is set
+	if showFullPath {
+		output.WriteString(root + "\n")
+	}
+
 	// Start with the root directory name
 	output.WriteString(filepath.Base(root) + "\n")
 
@@ -388,6 +400,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version information")
 	rootCmd.Flags().BoolVarP(&useSmartDefaults, "smart-defaults", "s", false, "Apply smart defaults based on detected project type")
 	rootCmd.Flags().IntVarP(&maxDepth, "depth", "d", 1, "Set the maximum depth of the directory tree to display (-1 for unlimited). (Default = 1)")
+	rootCmd.Flags().BoolVarP(&showFullPath, "full-path", "f", false, "Show the full directory path of the current working directory. (Default = false)")
 }
 
 func printPatternHelp() {
