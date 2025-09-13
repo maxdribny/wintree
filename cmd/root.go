@@ -250,7 +250,7 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 						return fs.SkipDir
 					}
 				}
-			} else { // Case 2: It's a file, check if it matches a glob-style include pattern.
+			} else { // Case 2: If it's a file, check if it matches a glob-style include pattern.
 				for _, pattern := range f.includeGlobs {
 					if matched, _ := filepath.Match(pattern, d.Name()); matched {
 						// Also check depth for files when in include mode.
