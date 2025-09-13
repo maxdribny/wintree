@@ -1,19 +1,78 @@
-# Compiled go binary
+# Go compiled binaries
 wintree
 wintree.exe
+*.exe
+*.dll
+*.so
+*.dylib
 
-# macOS specific files
-.DS_Store
-
-# Distribution folder
-/dist
-/build
-
-# Build scripts
-build-local.ps1
-build-release.ps1
-
-# Go coverage crap
+# Go test and coverage files
+*.test
 *.out
 coverage.out
+coverage.html
 coverage
+
+# Go module cache and vendor
+vendor/
+go.work
+go.work.sum
+
+# Build and distribution directories
+/dist/
+/build/
+/bin/
+
+# Temporary directories
+/temp/
+/tmp/
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# AI assistant documentation files
+CLAUDE.md
+WARP.md
+GEMINI.md
+CURSOR.md
+COPILOT.md
+*.ai.md
+
+# Log files
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Benchmark results (keep the directory structure but ignore specific results)
+benchmarks/bench_*.txt
+
+# Development scripts (if you want to keep them private)
+build-local.ps1
