@@ -60,7 +60,8 @@ wintree [path] [flags]
 | `--copy`           | `-c`      | Copy the final output tree to the system clipboard.              | `-c`                      |
 | `--smart-defaults` | `-s`      | Apply smart defaults based on detected project type.             | `-s`                      |
 | `--show-patterns`  | `-p`      | Show a guide for using glob patterns.                            | `-p`                      |
-| `--full-path`      | `-f`      | Show the full directory path above the tree output.              | `-f`                      |
+| `--full-path`      | `-f`      | Show the full directory path above the tree output. (Default = enabled) | `-f` to toggle                      |
+| `--filepath`       |           | Show only the full filepath of the specified path without tree.  | `--filepath /path/to/file` |
 | `--depth <int>`    | `-d`      | Set maximum depth of directory tree (-1 for unlimited).          | `-d 3`                    |
 | `--version`        | `-v`      | Show version information.                                        | `-v`                      |
 | `--help`           | `-h`      | Show the help message.                                           | `--help`                  |
@@ -101,11 +102,32 @@ wintree --include "*.go" --exclude "*_test.go"
 
 ### Show Full Directory Path
 
-Display the absolute path of the directory being visualized above the tree output.
+Display the absolute path of the directory being visualized above the tree output. This is now enabled by default.
 
 ```bash
-wintree --full-path
+# Full path is shown by default
+wintree
+
+# Disable full path display (show only base directory name)
+wintree --no-full-path
 ```
+
+### Quick Filepath Grab
+
+Get only the absolute filepath of a specific file or folder without tree traversal.
+
+```bash
+# Get the absolute path of a folder
+wintree --filepath ./src
+
+# Get the absolute path of a file
+wintree --filepath ./main.go
+
+# Output example:
+# C:\Users\Max\Programming\project\src
+```
+
+Note: The `--filepath` flag cannot be used with `--depth`, `--exclude`, `--include`, `--copy`, or `--out` flags.
 
 ### Control Tree Depth
 
