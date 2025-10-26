@@ -399,8 +399,9 @@ func TestBuildTreeOutput_WithFullPath(t *testing.T) {
 			t.Errorf("First line should be full path: got %q, want %q", lines[0], tempDir)
 		}
 
-		if lines[1] != filepath.Base(tempDir) {
-			t.Errorf("Second line should be base path: got %q, want %q", lines[1], filepath.Base(tempDir))
+		// Second line should be tree content, not base directory name
+		if lines[1] == "" {
+			t.Error("Expected tree content on second line")
 		}
 	})
 
@@ -415,16 +416,12 @@ func TestBuildTreeOutput_WithFullPath(t *testing.T) {
 		output := buildTreeOutput(tempDir, []string{})
 
 		lines := strings.Split(strings.TrimSpace(output), "\n")
-		if len(lines) != 2 {
-			t.Fatalf("Empty directory output should have exactly two lines, got %d", len(lines))
+		if len(lines) != 1 {
+			t.Fatalf("Empty directory output should have exactly one line, got %d", len(lines))
 		}
 
 		if lines[0] != tempDir {
 			t.Errorf("First line should be full path: got %q, want %q", lines[0], tempDir)
-		}
-
-		if lines[1] != filepath.Base(tempDir) {
-			t.Errorf("Second line should be base path: got %q, want %q", lines[1], filepath.Base(tempDir))
 		}
 	})
 }

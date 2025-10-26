@@ -308,8 +308,9 @@ func buildTreeOutput(root string, paths []string) string {
 		var output strings.Builder
 		if showFullPath {
 			output.WriteString(root + "\n")
+		} else {
+			output.WriteString(filepath.Base(root) + "\n")
 		}
-		output.WriteString(filepath.Base(root) + "\n")
 		return output.String()
 	}
 
@@ -346,13 +347,12 @@ func buildTreeOutput(root string, paths []string) string {
 	// Generate the tree output
 	var output strings.Builder
 
-	// Add full path if flag is set
+	// Add full path if flag is set, otherwise add just the base directory name
 	if showFullPath {
 		output.WriteString(root + "\n")
+	} else {
+		output.WriteString(filepath.Base(root) + "\n")
 	}
-
-	// Start with the root directory name
-	output.WriteString(filepath.Base(root) + "\n")
 
 	// A map to track which directory levels have more items, for drawing the tree with '|'
 	lastInDir := make(map[int]bool)
