@@ -5,7 +5,8 @@
       "Bash(go test:*)",
       "Bash(cat:*)",
       "Bash(go fmt:*)",
-      "Bash(go vet:*)"
+      "Bash(go vet:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
