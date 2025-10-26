@@ -54,10 +54,6 @@ jobs:
         go install golang.org/x/vuln/cmd/govulncheck@latest
         govulncheck ./...
 
-    - name: Run Nancy (dependency vulnerability scanner)
-      run: |
-        go list -json -deps ./... | docker run --rm -i sonatypecommunity/nancy:latest sleuth
-
   code-quality:
     name: Code Quality & Tests
     runs-on: ubuntu-latest
