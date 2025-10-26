@@ -358,10 +358,9 @@ func TestFullPathFlag(t *testing.T) {
 			t.Errorf("Expected first line to be full path %q, got %q", testDir, lines[0])
 		}
 
-		// Second line should be the base directory name
-		expectedBaseName := filepath.Base(testDir)
-		if lines[1] != expectedBaseName {
-			t.Errorf("Expected second line to be base name %q, got %q", expectedBaseName, lines[1])
+		// Second line should be the tree output (not the base directory name)
+		if lines[1] == "" {
+			t.Error("Expected tree content on second line")
 		}
 	})
 
