@@ -56,6 +56,9 @@ CURSOR.md
 COPILOT.md
 *.ai.md
 
+# Claude stuff
+.claude/settings.local.json
+
 # Log files
 *.log
 logs/
