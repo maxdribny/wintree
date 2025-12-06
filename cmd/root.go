@@ -426,8 +426,8 @@ func init() {
 	rootCmd.Flags().BoolVarP(&showPatterns, "show-patterns", "p", false, "Show a guide for using glob patterns")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version information")
 	rootCmd.Flags().BoolVarP(&useSmartDefaults, "smart-defaults", "s", false, "Apply smart defaults based on detected project type")
-	rootCmd.Flags().IntVarP(&maxDepth, "depth", "d", 1, "Set the maximum depth of the directory tree to display (-1 for unlimited). (Default = 1)")
-	rootCmd.Flags().BoolVarP(&showFullPath, "full-path", "f", true, "Show the full directory path of the current working directory. (Default = true)")
+	rootCmd.Flags().IntVarP(&maxDepth, "depth", "d", 1, "Set the maximum depth of the directory tree to display (-1 for unlimited)")
+	rootCmd.Flags().BoolVarP(&showFullPath, "full-path", "f", true, "Show the full directory path of the current working directory")
 	rootCmd.Flags().BoolVarP(&fullPathOnly, "filepath", "", false, "Show only the full filepath of the specified path (file or folder). Cannot be used with --depth, --exclude, --include, --copy, or --out flags.")
 }
 
