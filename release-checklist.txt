@@ -1,0 +1,88 @@
+WINTREE RELEASE CHECKLIST
+==========================
+
+Follow these steps in order to create a new release.
+Replace [VERSION] with the new version number (e.g., v0.3.6)
+
+Current version can be found with: git describe --tags --abbrev=0
+
+
+1. ENSURE CLEAN STATE
+---------------------
+git checkout main
+git pull origin main
+git status                    # Should show no uncommitted changes
+
+
+2. RUN TESTS
+------------
+go test -v ./...
+
+
+3. FORMAT AND LINT
+------------------
+go fmt ./...
+go vet ./...
+
+
+4. BUILD LOCALLY (optional - verify it works)
+----------------------------------------------
+.\build-local.ps1
+wintree --version
+wintree --help
+
+
+5. BUILD RELEASE ARTIFACTS
+--------------------------
+.\build-release.ps1 -Version [VERSION]
+
+# Verify artifacts created:
+ls dist/
+
+
+6. CREATE AND PUSH GIT TAG
+--------------------------
+git tag [VERSION]
+git push origin [VERSION]
+
+
+7. CREATE GITHUB RELEASE
+------------------------
+gh release create [VERSION] `
+  dist/wintree_[VERSION]_windows_amd64.zip `
+  dist/wintree_[VERSION]_macos_intel.zip `
+  dist/wintree_[VERSION]_macos_silicon.zip `
+  dist/wintree_[VERSION]_linux_amd64.zip `
+  --title "[VERSION]" `
+  --notes "## Changes
+
+- Description of changes here"
+
+
+8. VERIFY RELEASE
+-----------------
+# Check the release page:
+gh release view [VERSION]
+
+# Or open in browser:
+# https://github.com/maxdribny/wintree/releases/tag/[VERSION]
+
+
+VERSIONING GUIDE
+================
+- PATCH (v0.3.5 -> v0.3.6): Bug fixes, minor changes
+- MINOR (v0.3.5 -> v0.4.0): New features, backwards compatible
+- MAJOR (v0.3.5 -> v1.0.0): Breaking changes
+
+
+QUICK COPY-PASTE (replace v0.3.6 with your version)
+===================================================
+
+go test -v ./...
+go fmt ./...
+go vet ./...
+.\build-local.ps1
+.\build-release.ps1 -Version v0.3.6
+git tag v0.3.6
+git push origin v0.3.6
+gh release create v0.3.6 dist/wintree_v0.3.6_windows_amd64.zip dist/wintree_v0.3.6_macos_intel.zip dist/wintree_v0.3.6_macos_silicon.zip dist/wintree_v0.3.6_linux_amd64.zip --title "v0.3.6" --notes "## Changes"
