@@ -193,7 +193,9 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			// Skip directories we don't have permission to access
+			// instead of failing the entire walk
+			return fs.SkipDir
 		}
 
 		// Depth check (before exclusion / inclusion)
@@ -591,7 +593,19 @@ func detectProjectType(path string) string {
 
 // getSmartDefaults returns smart exclusion patterns based on project type
 func getSmartDefaults(projectType string) []string {
-	commonDefaults := []string{".git", ".DS_Store", "Thumbs.db"}
+	// commonDefaults := []string{".git", ".DS_Store", "Thumbs.db"}
+	// Lets get some good common defaults for all projects that we can assume (e.g. windows volume information)
+	commonDefaults := []string{
+		".git",
+		".DS_Store",
+		"Thumbs.db",
+		"System Volume Information",
+		"$RECYCLE.BIN",
+		"hiberfil.sys",
+		"pagefile.sys",
+		"swapfile.sys",
+		"vendor",
+	}
 
 	switch projectType {
 	case "go":
