@@ -591,7 +591,19 @@ func detectProjectType(path string) string {
 
 // getSmartDefaults returns smart exclusion patterns based on project type
 func getSmartDefaults(projectType string) []string {
-	commonDefaults := []string{".git", ".DS_Store", "Thumbs.db"}
+	// commonDefaults := []string{".git", ".DS_Store", "Thumbs.db"}
+	// Lets get some good common defaults for all projects that we can assume (e.g. windows volume information)
+	commonDefaults := []string{
+		".git",
+		".DS_Store",
+		"Thumbs.db",
+		"System Volume Information",
+		"$RECYCLE.BIN",
+		"hiberfil.sys",
+		"pagefile.sys",
+		"swapfile.sys",
+		"vendor",
+	}
 
 	switch projectType {
 	case "go":
