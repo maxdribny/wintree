@@ -193,7 +193,9 @@ func findMatchingFiles(root string, f filter) ([]string, error) {
 
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			// Skip directories we don't have permission to access
+			// instead of failing the entire walk
+			return fs.SkipDir
 		}
 
 		// Depth check (before exclusion / inclusion)
